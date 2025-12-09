@@ -250,10 +250,6 @@ const AccessPanel = ({ onAccessGranted, dangerMode }: AccessPanelProps) => {
         )}
       </div>
 
-      {/* Hint */}
-      <p className="mt-4 text-center text-xs text-muted-foreground opacity-50">
-        HINT: The correct code is PANDA-OVERRIDE-9X7-ACCESS
-      </p>
     </motion.div>
   );
 };
