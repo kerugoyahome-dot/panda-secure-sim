@@ -79,7 +79,7 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
               THE KENYA NATIONAL EXAMINATIONS COUNCIL
             </h2>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Mock Results Portal - Simulation Only
+              DATABASE
             </p>
           </div>
         </div>
