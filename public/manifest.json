@@ -1,0 +1,24 @@
+{
+  "name": "PANDA TECH - KNEC Secure Engine",
+  "short_name": "PANDA TECH",
+  "description": "Movie Simulation - KNEC Secure Exam Engine v9.7",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050a0f",
+  "theme_color": "#00ff00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        mono: ["'JetBrains Mono'", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -47,6 +50,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        cyber: {
+          green: "hsl(var(--cyber-green))",
+          cyan: "hsl(var(--cyber-cyan))",
+          red: "hsl(var(--cyber-red))",
+          yellow: "hsl(var(--cyber-yellow))",
+          purple: "hsl(var(--cyber-purple))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -65,25 +75,44 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-4px)" },
+          "20%, 40%, 60%, 80%": { transform: "translateX(4px)" },
+        },
+        "tunnel-move": {
+          "0%": { transform: "translateZ(-1000px) scale(0.1)", opacity: "0" },
+          "50%": { opacity: "1" },
+          "100%": { transform: "translateZ(100px) scale(2)", opacity: "0" },
+        },
+        "code-fall": {
+          "0%": { transform: "translateY(-100%)", opacity: "1" },
+          "100%": { transform: "translateY(100vh)", opacity: "0" },
+        },
+        typewriter: {
+          from: { width: "0" },
+          to: { width: "100%" },
+        },
+        "progress-fill": {
+          from: { width: "0%" },
+          to: { width: "var(--progress-width)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        shake: "shake 0.5s ease-in-out",
+        "tunnel-move": "tunnel-move 3s linear infinite",
+        "code-fall": "code-fall 5s linear infinite",
+        typewriter: "typewriter 2s steps(40) forwards",
+        "progress-fill": "progress-fill 1s ease-out forwards",
       },
     },
   },
