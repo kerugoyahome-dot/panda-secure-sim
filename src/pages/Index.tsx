@@ -3,16 +3,21 @@ import { AnimatePresence } from 'framer-motion';
 import MatrixRain from '@/components/MatrixRain';
 import Scanlines from '@/components/Scanlines';
 import TerminalHeader from '@/components/TerminalHeader';
+import HomePage from '@/components/HomePage';
 import AccessPanel from '@/components/AccessPanel';
 import HackingSequence from '@/components/HackingSequence';
 import MainDashboard from '@/components/MainDashboard';
 import DangerAlert from '@/components/DangerAlert';
 
-type AppState = 'login' | 'hacking' | 'dashboard';
+type AppState = 'home' | 'login' | 'hacking' | 'dashboard';
 
 const Index = () => {
-  const [appState, setAppState] = useState<AppState>('login');
+  const [appState, setAppState] = useState<AppState>('home');
   const [dangerMode, setDangerMode] = useState(false);
+
+  const handleSystemStart = () => {
+    setAppState('login');
+  };
 
   const handleAccessGranted = () => {
     setAppState('hacking');
@@ -41,6 +46,14 @@ const Index = () => {
       {/* Main content */}
       <main className="relative z-10 pt-24 pb-8 px-4 container mx-auto max-w-6xl">
         <AnimatePresence mode="wait">
+          {appState === 'home' && (
+            <HomePage 
+              key="home"
+              onStart={handleSystemStart}
+              dangerMode={dangerMode}
+            />
+          )}
+
           {appState === 'login' && (
             <AccessPanel 
               key="login"

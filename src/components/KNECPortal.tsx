@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Calendar, FileText, AlertCircle, BookOpen, GraduationCap, ClipboardList } from 'lucide-react';
+import { ChevronRight, Calendar, FileText, AlertCircle, BookOpen, GraduationCap, ClipboardList, Search, User } from 'lucide-react';
 import knecLogo from '@/assets/knec-logo.png';
 
 interface KNECPortalProps {
@@ -17,14 +17,18 @@ const EXAM_TYPES = [
   { id: 'SBA', name: 'School-Based Assessments', icon: ClipboardList, description: 'Continuous Assessment' },
 ] as const;
 
-// Generate years from 1996 to 2025
-const YEARS = Array.from({ length: 30 }, (_, i) => 2025 - i);
+// Generate years from 1996 to current year + 1
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: currentYear - 1995 + 1 }, (_, i) => currentYear + 1 - i);
 
 const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
   const [selectedExam, setSelectedExam] = useState<ExamType>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [showNotReady, setShowNotReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [indexNumber, setIndexNumber] = useState('');
+  const [searchingStudent, setSearchingStudent] = useState(false);
+  const [studentResult, setStudentResult] = useState<any>(null);
 
   const handleExamSelect = (examId: ExamType) => {
     setSelectedExam(examId);
@@ -35,15 +39,46 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
   const handleYearSelect = (year: number) => {
     setLoading(true);
     setSelectedYear(year);
+    setStudentResult(null);
+    setIndexNumber('');
     
     setTimeout(() => {
       setLoading(false);
-      if (year === 2025) {
+      if (year >= currentYear) {
         setShowNotReady(true);
       } else {
         setShowNotReady(false);
       }
     }, 1500);
+  };
+
+  const handleStudentSearch = () => {
+    if (indexNumber.length < 5) return;
+    
+    setSearchingStudent(true);
+    setTimeout(() => {
+      setSearchingStudent(false);
+      // Generate mock student result
+      const grades = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
+      const subjects = [
+        'English', 'Kiswahili', 'Mathematics', 'Biology', 'Physics', 
+        'Chemistry', 'History', 'Geography', 'CRE'
+      ];
+      
+      setStudentResult({
+        indexNumber: indexNumber.toUpperCase(),
+        name: 'STUDENT NAME REDACTED',
+        school: 'SCHOOL NAME REDACTED',
+        year: selectedYear,
+        subjects: subjects.map(sub => ({
+          name: sub,
+          grade: grades[Math.floor(Math.random() * grades.length)],
+          points: Math.floor(Math.random() * 12) + 1
+        })),
+        meanGrade: grades[Math.floor(Math.random() * 5)],
+        totalPoints: Math.floor(Math.random() * 30) + 50
+      });
+    }, 2000);
   };
 
   const handleBack = () => {
@@ -326,14 +361,116 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
                 </div>
               </div>
 
-              <div className="text-center py-8 border-t border-border">
-                <FileText className={`w-12 h-12 mx-auto mb-3 ${dangerMode ? 'text-destructive/50' : 'text-primary/50'}`} />
-                <p className="text-sm text-muted-foreground">
-                  Individual result lookup requires student index number
-                </p>
-                <p className="text-xs text-destructive mt-2 font-bold">
-                  (MOCK DATA - FOR MOVIE USE ONLY)
-                </p>
+              {/* Student Index Search */}
+              <div className="border-t border-border pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Search className={`w-5 h-5 ${dangerMode ? 'text-destructive' : 'text-primary'}`} />
+                  <span className="font-bold text-foreground">SEARCH STUDENT RESULT</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={indexNumber}
+                    onChange={(e) => setIndexNumber(e.target.value.toUpperCase())}
+                    placeholder="Enter Index Number (e.g., 12345678/2024)"
+                    className={`flex-1 p-3 bg-background/50 border rounded font-mono text-sm
+                      ${dangerMode 
+                        ? 'border-destructive/50 focus:border-destructive text-destructive' 
+                        : 'border-primary/50 focus:border-primary text-foreground'
+                      } placeholder:text-muted-foreground/50 focus:outline-none`}
+                  />
+                  <button
+                    onClick={handleStudentSearch}
+                    disabled={indexNumber.length < 5 || searchingStudent}
+                    className={`px-6 py-3 font-bold text-sm rounded transition-all
+                      ${indexNumber.length >= 5 && !searchingStudent
+                        ? dangerMode 
+                          ? 'bg-destructive text-destructive-foreground hover:bg-destructive/80' 
+                          : 'bg-primary text-primary-foreground hover:bg-primary/80'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed'
+                      }`}
+                  >
+                    {searchingStudent ? 'SEARCHING...' : 'SEARCH'}
+                  </button>
+                </div>
+
+                {/* Searching Animation */}
+                {searchingStudent && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-4 text-center py-6"
+                  >
+                    <div className={`w-8 h-8 mx-auto border-2 ${dangerMode ? 'border-destructive/30 border-t-destructive' : 'border-primary/30 border-t-primary'} rounded-full animate-spin`} />
+                    <p className={`mt-2 text-sm ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                      Querying database for {indexNumber}...
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* Student Result Display */}
+                {studentResult && !searchingStudent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mt-4 p-4 border rounded-lg ${
+                      dangerMode ? 'border-destructive/30 bg-destructive/5' : 'border-primary/30 bg-primary/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <User className={`w-5 h-5 ${dangerMode ? 'text-destructive' : 'text-primary'}`} />
+                      <span className="font-bold text-foreground">RESULT SLIP - {studentResult.year}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Index No:</span>
+                        <span className={`ml-2 font-mono ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                          {studentResult.indexNumber}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Mean Grade:</span>
+                        <span className={`ml-2 font-bold text-lg ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                          {studentResult.meanGrade}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border pt-4">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-muted-foreground">
+                            <th className="text-left py-1">Subject</th>
+                            <th className="text-center py-1">Grade</th>
+                            <th className="text-center py-1">Points</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentResult.subjects.map((sub: any, i: number) => (
+                            <tr key={i} className="border-t border-border/50">
+                              <td className="py-1 text-foreground">{sub.name}</td>
+                              <td className={`py-1 text-center font-bold ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                                {sub.grade}
+                              </td>
+                              <td className="py-1 text-center text-muted-foreground">{sub.points}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-border font-bold">
+                            <td className="py-2 text-foreground">TOTAL</td>
+                            <td className={`py-2 text-center ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                              {studentResult.meanGrade}
+                            </td>
+                            <td className="py-2 text-center text-foreground">{studentResult.totalPoints}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </div>
           </motion.div>
