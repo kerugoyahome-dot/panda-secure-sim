@@ -161,7 +161,7 @@ const AccessPanel = ({ onAccessGranted, dangerMode }: AccessPanelProps) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <input
-              type="text"
+              type="password"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="ENTER ACCESS OVERRIDE CODE..."
