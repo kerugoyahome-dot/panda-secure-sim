@@ -27,6 +27,11 @@ const Index = () => {
     setAppState('dashboard');
   };
 
+  const handleAutoLogout = () => {
+    setAppState('home');
+    setDangerMode(false);
+  };
+
   const toggleDangerMode = () => {
     setDangerMode(!dangerMode);
   };
@@ -74,6 +79,7 @@ const Index = () => {
             <MainDashboard 
               key="dashboard"
               dangerMode={dangerMode}
+              onAutoLogout={handleAutoLogout}
             />
           )}
         </AnimatePresence>

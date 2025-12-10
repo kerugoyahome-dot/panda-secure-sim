@@ -4,9 +4,10 @@ import KNECPortal from './KNECPortal';
 
 interface MainDashboardProps {
   dangerMode: boolean;
+  onAutoLogout?: () => void;
 }
 
-const MainDashboard = ({ dangerMode }: MainDashboardProps) => {
+const MainDashboard = ({ dangerMode, onAutoLogout }: MainDashboardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -15,7 +16,7 @@ const MainDashboard = ({ dangerMode }: MainDashboardProps) => {
       className="space-y-6"
     >
       {/* KNEC Portal */}
-      <KNECPortal dangerMode={dangerMode} />
+      <KNECPortal dangerMode={dangerMode} onAutoLogout={onAutoLogout} />
 
       {/* Footer */}
       <motion.footer

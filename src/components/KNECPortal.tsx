@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Calendar, FileText, AlertCircle, BookOpen, GraduationCap, ClipboardList, Search, User } from 'lucide-react';
+import { ChevronRight, Calendar, FileText, AlertCircle, BookOpen, GraduationCap, ClipboardList, Search, User, Edit3, Save, Timer } from 'lucide-react';
 import knecLogo from '@/assets/knec-logo.png';
 
 interface KNECPortalProps {
   dangerMode: boolean;
+  onAutoLogout?: () => void;
 }
 
 type ExamType = 'KPSEA' | 'KJSEA' | 'KCSE' | 'QT' | 'SBA' | null;
@@ -21,7 +22,47 @@ const EXAM_TYPES = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: currentYear - 1995 + 1 }, (_, i) => currentYear + 1 - i);
 
-const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
+// Real student data from certificates
+const STUDENT_DATABASE: Record<string, any> = {
+  '12345503/079': {
+    indexNumber: '12345503/079',
+    name: 'PURITY WANZA MUSEMBI',
+    school: 'MATUNGULU GIRLS SCHOOL',
+    year: 2012,
+    subjects: [
+      { code: '101', name: 'ENGLISH', grade: 'B-', points: 7 },
+      { code: '102', name: 'KISWAHILI', grade: 'C-', points: 4 },
+      { code: '121', name: 'MATHEMATICS', grade: 'B-', points: 7 },
+      { code: '231', name: 'BIOLOGY', grade: 'C', points: 5 },
+      { code: '233', name: 'CHEMISTRY', grade: 'B', points: 8 },
+      { code: '311', name: 'HISTORY AND GOVERNMENT', grade: 'B-', points: 7 },
+      { code: '313', name: 'CHRISTIAN RELIGIOUS EDUCATION', grade: 'B-', points: 7 },
+      { code: '565', name: 'BUSINESS STUDIES', grade: 'C+', points: 6 },
+    ],
+    meanGrade: 'C+',
+    totalPoints: 51
+  },
+  '36611001/008': {
+    indexNumber: '36611001/008',
+    name: 'KHISA P LABAN',
+    school: 'KARIMA SECONDARY SCHOOL',
+    year: 2017,
+    subjects: [
+      { code: '101', name: 'ENGLISH', grade: 'C-', points: 4 },
+      { code: '102', name: 'KISWAHILI', grade: 'C-', points: 4 },
+      { code: '121', name: 'MATHEMATICS', grade: 'D', points: 2 },
+      { code: '231', name: 'BIOLOGY', grade: 'C-', points: 4 },
+      { code: '233', name: 'CHEMISTRY', grade: 'D', points: 2 },
+      { code: '311', name: 'HISTORY AND GOVERNMENT', grade: 'B+', points: 9 },
+      { code: '313', name: 'CHRISTIAN RELIGIOUS EDUCATION', grade: 'B', points: 8 },
+      { code: '565', name: 'BUSINESS STUDIES', grade: 'B-', points: 7 },
+    ],
+    meanGrade: 'B+',
+    totalPoints: 40
+  }
+};
+
+const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
   const [selectedExam, setSelectedExam] = useState<ExamType>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [showNotReady, setShowNotReady] = useState(false);
@@ -29,6 +70,40 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
   const [indexNumber, setIndexNumber] = useState('');
   const [searchingStudent, setSearchingStudent] = useState(false);
   const [studentResult, setStudentResult] = useState<any>(null);
+  
+  // Edit mode states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCountdown, setEditCountdown] = useState(45);
+  const [editedResult, setEditedResult] = useState<any>(null);
+  const [showDangerCountdown, setShowDangerCountdown] = useState(false);
+
+  // Handle edit countdown and auto-logout
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isEditing && editCountdown > 0) {
+      interval = setInterval(() => {
+        setEditCountdown(prev => {
+          if (prev <= 1) {
+            setShowDangerCountdown(true);
+            setIsEditing(false);
+            // Auto logout after showing danger for 3 seconds
+            setTimeout(() => {
+              if (onAutoLogout) {
+                onAutoLogout();
+              }
+            }, 3000);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isEditing, editCountdown, onAutoLogout]);
 
   const handleExamSelect = (examId: ExamType) => {
     setSelectedExam(examId);
@@ -41,6 +116,9 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
     setSelectedYear(year);
     setStudentResult(null);
     setIndexNumber('');
+    setIsEditing(false);
+    setEditCountdown(45);
+    setShowDangerCountdown(false);
     
     setTimeout(() => {
       setLoading(false);
@@ -56,35 +134,83 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
     if (indexNumber.length < 5) return;
     
     setSearchingStudent(true);
+    setIsEditing(false);
+    setEditCountdown(45);
+    setShowDangerCountdown(false);
+    
     setTimeout(() => {
       setSearchingStudent(false);
-      // Generate mock student result
-      const grades = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
-      const subjects = [
-        'English', 'Kiswahili', 'Mathematics', 'Biology', 'Physics', 
-        'Chemistry', 'History', 'Geography', 'CRE'
-      ];
       
-      setStudentResult({
-        indexNumber: indexNumber.toUpperCase(),
-        name: 'STUDENT NAME REDACTED',
-        school: 'SCHOOL NAME REDACTED',
-        year: selectedYear,
-        subjects: subjects.map(sub => ({
-          name: sub,
-          grade: grades[Math.floor(Math.random() * grades.length)],
-          points: Math.floor(Math.random() * 12) + 1
-        })),
-        meanGrade: grades[Math.floor(Math.random() * 5)],
-        totalPoints: Math.floor(Math.random() * 30) + 50
-      });
+      // Check if student exists in database
+      const normalizedIndex = indexNumber.toUpperCase().trim();
+      const foundStudent = STUDENT_DATABASE[normalizedIndex];
+      
+      if (foundStudent) {
+        setStudentResult({ ...foundStudent });
+        setEditedResult({ ...foundStudent });
+      } else {
+        // Generate mock student result for other index numbers
+        const grades = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
+        const subjects = [
+          { code: '101', name: 'ENGLISH' },
+          { code: '102', name: 'KISWAHILI' },
+          { code: '121', name: 'MATHEMATICS' },
+          { code: '231', name: 'BIOLOGY' },
+          { code: '232', name: 'PHYSICS' },
+          { code: '233', name: 'CHEMISTRY' },
+          { code: '311', name: 'HISTORY AND GOVERNMENT' },
+          { code: '312', name: 'GEOGRAPHY' },
+        ];
+        
+        const mockResult = {
+          indexNumber: normalizedIndex,
+          name: 'STUDENT NAME REDACTED',
+          school: 'SCHOOL NAME REDACTED',
+          year: selectedYear,
+          subjects: subjects.map(sub => ({
+            ...sub,
+            grade: grades[Math.floor(Math.random() * grades.length)],
+            points: Math.floor(Math.random() * 12) + 1
+          })),
+          meanGrade: grades[Math.floor(Math.random() * 5)],
+          totalPoints: Math.floor(Math.random() * 30) + 50
+        };
+        
+        setStudentResult(mockResult);
+        setEditedResult({ ...mockResult });
+      }
     }, 2000);
+  };
+
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setEditCountdown(45);
+    setEditedResult({ ...studentResult });
+  };
+
+  const handleSaveEdit = () => {
+    setStudentResult({ ...editedResult });
+    setIsEditing(false);
+    setEditCountdown(45);
+  };
+
+  const handleGradeChange = (index: number, newGrade: string) => {
+    const newSubjects = [...editedResult.subjects];
+    newSubjects[index] = { ...newSubjects[index], grade: newGrade.toUpperCase() };
+    setEditedResult({ ...editedResult, subjects: newSubjects });
+  };
+
+  const handleMeanGradeChange = (newGrade: string) => {
+    setEditedResult({ ...editedResult, meanGrade: newGrade.toUpperCase() });
   };
 
   const handleBack = () => {
     if (selectedYear !== null) {
       setSelectedYear(null);
       setShowNotReady(false);
+      setIsEditing(false);
+      setEditCountdown(45);
+      setShowDangerCountdown(false);
     } else {
       setSelectedExam(null);
     }
@@ -96,6 +222,36 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
       animate={{ opacity: 1 }}
       className="relative min-h-[500px]"
     >
+      {/* Danger Countdown Overlay */}
+      <AnimatePresence>
+        {showDangerCountdown && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          >
+            <motion.div
+              initial={{ scale: 0.5 }}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, duration: 0.5 }}
+              className="text-center"
+            >
+              <AlertCircle className="w-32 h-32 mx-auto text-destructive animate-pulse" />
+              <h2 className="text-4xl font-bold text-destructive text-glow-red mt-4">
+                SECURITY BREACH DETECTED
+              </h2>
+              <p className="text-xl text-destructive/80 mt-2">
+                EDIT SESSION EXPIRED - INITIATING AUTO LOGOUT
+              </p>
+              <p className="text-lg text-muted-foreground mt-4">
+                TERMINATING CONNECTION...
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* KNEC Logo Background Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
         <img 
@@ -268,7 +424,7 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
               Accessing {selectedExam} {selectedYear} Results...
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Querying Mock Database...
+              Querying Database...
             </p>
           </motion.div>
         )}
@@ -331,7 +487,7 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
             <div className={`p-6 border ${dangerMode ? 'border-destructive/30' : 'border-primary/30'} rounded-lg bg-card/50`}>
               <div className="flex items-center gap-3 mb-4">
                 <Calendar className={`w-5 h-5 ${dangerMode ? 'text-destructive' : 'text-primary'}`} />
-                <span className="font-bold">Mock Data - {selectedYear} Academic Year</span>
+                <span className="font-bold">Data - {selectedYear} Academic Year</span>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -373,7 +529,7 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
                     type="text"
                     value={indexNumber}
                     onChange={(e) => setIndexNumber(e.target.value.toUpperCase())}
-                    placeholder="Enter Index Number (e.g., 12345678/2024)"
+                    placeholder="Enter Index Number (e.g., 36611001/008)"
                     className={`flex-1 p-3 bg-background/50 border rounded font-mono text-sm
                       ${dangerMode 
                         ? 'border-destructive/50 focus:border-destructive text-destructive' 
@@ -418,9 +574,47 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
                       dangerMode ? 'border-destructive/30 bg-destructive/5' : 'border-primary/30 bg-primary/5'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-4">
-                      <User className={`w-5 h-5 ${dangerMode ? 'text-destructive' : 'text-primary'}`} />
-                      <span className="font-bold text-foreground">RESULT SLIP - {studentResult.year}</span>
+                    {/* Edit Timer and Controls */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <User className={`w-5 h-5 ${dangerMode ? 'text-destructive' : 'text-primary'}`} />
+                        <span className="font-bold text-foreground">RESULT SLIP - {studentResult.year}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        {isEditing && (
+                          <div className={`flex items-center gap-2 px-3 py-1 rounded ${
+                            editCountdown <= 10 
+                              ? 'bg-destructive/20 text-destructive animate-pulse' 
+                              : 'bg-yellow-500/20 text-yellow-500'
+                          }`}>
+                            <Timer className="w-4 h-4" />
+                            <span className="font-mono font-bold">{editCountdown}s</span>
+                          </div>
+                        )}
+                        
+                        {!isEditing ? (
+                          <button
+                            onClick={handleStartEdit}
+                            className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-bold transition-all
+                              ${dangerMode 
+                                ? 'bg-destructive/20 text-destructive hover:bg-destructive/30' 
+                                : 'bg-primary/20 text-primary hover:bg-primary/30'
+                              }`}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            EDIT
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleSaveEdit}
+                            className="flex items-center gap-1 px-3 py-1 rounded text-sm font-bold bg-green-500/20 text-green-500 hover:bg-green-500/30 transition-all"
+                          >
+                            <Save className="w-4 h-4" />
+                            SAVE
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
@@ -431,10 +625,34 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Mean Grade:</span>
-                        <span className={`ml-2 font-bold text-lg ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
-                          {studentResult.meanGrade}
+                        <span className="text-muted-foreground">Name:</span>
+                        <span className={`ml-2 font-bold ${dangerMode ? 'text-destructive' : 'text-foreground'}`}>
+                          {studentResult.name}
                         </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">School:</span>
+                        <span className="ml-2 text-foreground">
+                          {studentResult.school}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Mean Grade:</span>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editedResult?.meanGrade || ''}
+                            onChange={(e) => handleMeanGradeChange(e.target.value)}
+                            maxLength={2}
+                            className={`ml-2 w-16 px-2 py-1 font-bold text-lg rounded bg-background border
+                              ${dangerMode ? 'border-destructive text-destructive' : 'border-primary text-primary'}
+                              focus:outline-none text-center`}
+                          />
+                        ) : (
+                          <span className={`ml-2 font-bold text-lg ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                            {studentResult.meanGrade}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -442,17 +660,33 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-muted-foreground">
+                            <th className="text-left py-1">Code</th>
                             <th className="text-left py-1">Subject</th>
                             <th className="text-center py-1">Grade</th>
                             <th className="text-center py-1">Points</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {studentResult.subjects.map((sub: any, i: number) => (
+                          {(isEditing ? editedResult : studentResult)?.subjects.map((sub: any, i: number) => (
                             <tr key={i} className="border-t border-border/50">
+                              <td className="py-1 text-muted-foreground font-mono">{sub.code}</td>
                               <td className="py-1 text-foreground">{sub.name}</td>
-                              <td className={`py-1 text-center font-bold ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
-                                {sub.grade}
+                              <td className="py-1 text-center">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={sub.grade}
+                                    onChange={(e) => handleGradeChange(i, e.target.value)}
+                                    maxLength={2}
+                                    className={`w-12 px-1 py-0.5 font-bold rounded bg-background border text-center
+                                      ${dangerMode ? 'border-destructive text-destructive' : 'border-primary text-primary'}
+                                      focus:outline-none`}
+                                  />
+                                ) : (
+                                  <span className={`font-bold ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
+                                    {sub.grade}
+                                  </span>
+                                )}
                               </td>
                               <td className="py-1 text-center text-muted-foreground">{sub.points}</td>
                             </tr>
@@ -460,15 +694,36 @@ const KNECPortal = ({ dangerMode }: KNECPortalProps) => {
                         </tbody>
                         <tfoot>
                           <tr className="border-t-2 border-border font-bold">
-                            <td className="py-2 text-foreground">TOTAL</td>
+                            <td colSpan={2} className="py-2 text-foreground">TOTAL</td>
                             <td className={`py-2 text-center ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
-                              {studentResult.meanGrade}
+                              {isEditing ? editedResult?.meanGrade : studentResult.meanGrade}
                             </td>
                             <td className="py-2 text-center text-foreground">{studentResult.totalPoints}</td>
                           </tr>
                         </tfoot>
                       </table>
                     </div>
+
+                    {isEditing && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className={`mt-4 p-3 rounded text-xs ${
+                          editCountdown <= 10 
+                            ? 'bg-destructive/20 text-destructive border border-destructive/50' 
+                            : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          <span className="font-bold">
+                            {editCountdown <= 10 
+                              ? 'WARNING: Session expiring soon! Save changes now!' 
+                              : 'Edit session active. Changes will be locked after timeout.'}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
                   </motion.div>
                 )}
               </div>
