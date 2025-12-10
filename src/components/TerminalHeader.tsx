@@ -45,10 +45,10 @@ const TerminalHeader = ({ dangerMode, onToggleDanger }: TerminalHeaderProps) => 
           <Shield className="w-6 h-6 text-primary text-glow" />
           <div>
             <h1 className="text-sm font-bold text-primary text-glow tracking-wider">
-              PANDA TECH
+              COOL HACKS SYSTEM
             </h1>
             <p className="text-xs text-muted-foreground">
-              KNEC SECURE ENGINE v9.7
+              ADVANCED PENETRATION v9.7
             </p>
           </div>
         </div>

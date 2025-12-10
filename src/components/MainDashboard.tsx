@@ -17,23 +17,17 @@ const MainDashboard = ({ dangerMode }: MainDashboardProps) => {
       {/* KNEC Portal */}
       <KNECPortal dangerMode={dangerMode} />
 
-      {/* Footer disclaimer */}
+      {/* Footer */}
       <motion.footer
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
         className="text-center py-6 border-t border-border"
       >
-        <div className="flex items-center justify-center gap-2 mb-2">
+        <div className="flex items-center justify-center gap-2">
           <Database className="w-4 h-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">PANDA TECH SYSTEMS</span>
+          <span className="text-xs text-muted-foreground">COOL HACKS SYSTEM</span>
         </div>
-        <p className="text-xs text-destructive font-bold">
-          FOR MOVIE USE ONLY – NOT A REAL SYSTEM.
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          All data is fictional. No real KNEC systems accessed.
-        </p>
       </motion.footer>
     </motion.div>
   );
