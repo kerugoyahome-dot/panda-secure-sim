@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Calendar, FileText, AlertCircle, BookOpen, GraduationCap, ClipboardList, Search, User, Edit3, Save, Timer } from 'lucide-react';
+import { ChevronRight, Calendar, FileText, AlertCircle, BookOpen, GraduationCap, ClipboardList, Search, User, Edit3, Save, Timer, Download, FileDown } from 'lucide-react';
 import knecLogo from '@/assets/knec-logo.png';
+import { exportResultToPDF } from '@/lib/pdfExport';
+import { saveEditedResult, getEditedResult } from '@/lib/storage';
+import { toast } from 'sonner';
 
 interface KNECPortalProps {
   dangerMode: boolean;
@@ -62,6 +65,12 @@ const STUDENT_DATABASE: Record<string, any> = {
   }
 };
 
+// Grade to points mapping
+const GRADE_POINTS: Record<string, number> = {
+  'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8,
+  'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'E': 1
+};
+
 const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
   const [selectedExam, setSelectedExam] = useState<ExamType>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -76,6 +85,7 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
   const [editCountdown, setEditCountdown] = useState(45);
   const [editedResult, setEditedResult] = useState<any>(null);
   const [showDangerCountdown, setShowDangerCountdown] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Handle edit countdown and auto-logout
   useEffect(() => {
@@ -143,41 +153,53 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
       
       // Check if student exists in database
       const normalizedIndex = indexNumber.toUpperCase().trim();
-      const foundStudent = STUDENT_DATABASE[normalizedIndex];
       
-      if (foundStudent) {
-        setStudentResult({ ...foundStudent });
-        setEditedResult({ ...foundStudent });
+      // First check if there's an edited version in localStorage
+      const editedVersion = getEditedResult(normalizedIndex);
+      
+      if (editedVersion) {
+        setStudentResult({ ...editedVersion });
+        setEditedResult({ ...editedVersion });
       } else {
-        // Generate mock student result for other index numbers
-        const grades = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
-        const subjects = [
-          { code: '101', name: 'ENGLISH' },
-          { code: '102', name: 'KISWAHILI' },
-          { code: '121', name: 'MATHEMATICS' },
-          { code: '231', name: 'BIOLOGY' },
-          { code: '232', name: 'PHYSICS' },
-          { code: '233', name: 'CHEMISTRY' },
-          { code: '311', name: 'HISTORY AND GOVERNMENT' },
-          { code: '312', name: 'GEOGRAPHY' },
-        ];
+        const foundStudent = STUDENT_DATABASE[normalizedIndex];
         
-        const mockResult = {
-          indexNumber: normalizedIndex,
-          name: 'STUDENT NAME REDACTED',
-          school: 'SCHOOL NAME REDACTED',
-          year: selectedYear,
-          subjects: subjects.map(sub => ({
-            ...sub,
-            grade: grades[Math.floor(Math.random() * grades.length)],
-            points: Math.floor(Math.random() * 12) + 1
-          })),
-          meanGrade: grades[Math.floor(Math.random() * 5)],
-          totalPoints: Math.floor(Math.random() * 30) + 50
-        };
-        
-        setStudentResult(mockResult);
-        setEditedResult({ ...mockResult });
+        if (foundStudent) {
+          setStudentResult({ ...foundStudent });
+          setEditedResult({ ...foundStudent });
+        } else {
+          // Generate mock student result for other index numbers
+          const grades = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
+          const subjects = [
+            { code: '101', name: 'ENGLISH' },
+            { code: '102', name: 'KISWAHILI' },
+            { code: '121', name: 'MATHEMATICS' },
+            { code: '231', name: 'BIOLOGY' },
+            { code: '232', name: 'PHYSICS' },
+            { code: '233', name: 'CHEMISTRY' },
+            { code: '311', name: 'HISTORY AND GOVERNMENT' },
+            { code: '312', name: 'GEOGRAPHY' },
+          ];
+          
+          const mockResult = {
+            indexNumber: normalizedIndex,
+            name: 'STUDENT NAME REDACTED',
+            school: 'SCHOOL NAME REDACTED',
+            year: selectedYear,
+            subjects: subjects.map(sub => {
+              const grade = grades[Math.floor(Math.random() * grades.length)];
+              return {
+                ...sub,
+                grade,
+                points: GRADE_POINTS[grade] || Math.floor(Math.random() * 12) + 1
+              };
+            }),
+            meanGrade: grades[Math.floor(Math.random() * 5)],
+            totalPoints: Math.floor(Math.random() * 30) + 50
+          };
+          
+          setStudentResult(mockResult);
+          setEditedResult({ ...mockResult });
+        }
       }
     }, 2000);
   };
@@ -189,19 +211,52 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
   };
 
   const handleSaveEdit = () => {
-    setStudentResult({ ...editedResult });
+    // Calculate total points from subjects
+    const totalPoints = editedResult.subjects.reduce((sum: number, sub: any) => sum + (sub.points || 0), 0);
+    const updatedResult = { ...editedResult, totalPoints };
+    
+    // Save to localStorage for persistence
+    saveEditedResult(updatedResult);
+    
+    setStudentResult(updatedResult);
+    setEditedResult(updatedResult);
     setIsEditing(false);
     setEditCountdown(45);
+    
+    toast.success('Results saved successfully!', {
+      description: 'Changes have been persisted to local storage.'
+    });
   };
 
   const handleGradeChange = (index: number, newGrade: string) => {
     const newSubjects = [...editedResult.subjects];
-    newSubjects[index] = { ...newSubjects[index], grade: newGrade.toUpperCase() };
+    const grade = newGrade.toUpperCase();
+    const points = GRADE_POINTS[grade] || newSubjects[index].points;
+    newSubjects[index] = { ...newSubjects[index], grade, points };
+    setEditedResult({ ...editedResult, subjects: newSubjects });
+  };
+
+  const handlePointsChange = (index: number, newPoints: string) => {
+    const newSubjects = [...editedResult.subjects];
+    const points = parseInt(newPoints) || 0;
+    newSubjects[index] = { ...newSubjects[index], points: Math.max(0, Math.min(12, points)) };
     setEditedResult({ ...editedResult, subjects: newSubjects });
   };
 
   const handleMeanGradeChange = (newGrade: string) => {
     setEditedResult({ ...editedResult, meanGrade: newGrade.toUpperCase() });
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    const success = await exportResultToPDF('result-slip', studentResult.name, studentResult.indexNumber);
+    setIsExporting(false);
+    
+    if (success) {
+      toast.success('PDF exported successfully!');
+    } else {
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleBack = () => {
@@ -568,6 +623,7 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
                 {/* Student Result Display */}
                 {studentResult && !searchingStudent && (
                   <motion.div
+                    id="result-slip"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`mt-4 p-4 border rounded-lg ${
@@ -575,7 +631,7 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
                     }`}
                   >
                     {/* Edit Timer and Controls */}
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                       <div className="flex items-center gap-2">
                         <User className={`w-5 h-5 ${dangerMode ? 'text-destructive' : 'text-primary'}`} />
                         <span className="font-bold text-foreground">RESULT SLIP - {studentResult.year}</span>
@@ -592,6 +648,26 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
                             <span className="font-mono font-bold">{editCountdown}s</span>
                           </div>
                         )}
+                        
+                        {/* Export PDF Button */}
+                        <button
+                          onClick={handleExportPDF}
+                          disabled={isExporting}
+                          className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-bold transition-all
+                            ${dangerMode 
+                              ? 'bg-secondary/20 text-secondary hover:bg-secondary/30' 
+                              : 'bg-secondary/20 text-secondary hover:bg-secondary/30'
+                            } ${isExporting ? 'opacity-50 cursor-wait' : ''}`}
+                        >
+                          {isExporting ? (
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }}>
+                              <Download className="w-4 h-4" />
+                            </motion.div>
+                          ) : (
+                            <FileDown className="w-4 h-4" />
+                          )}
+                          PDF
+                        </button>
                         
                         {!isEditing ? (
                           <button
@@ -688,7 +764,22 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
                                   </span>
                                 )}
                               </td>
-                              <td className="py-1 text-center text-muted-foreground">{sub.points}</td>
+                              <td className="py-1 text-center">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={sub.points}
+                                    onChange={(e) => handlePointsChange(i, e.target.value)}
+                                    min={1}
+                                    max={12}
+                                    className={`w-12 px-1 py-0.5 rounded bg-background border text-center
+                                      ${dangerMode ? 'border-destructive text-destructive' : 'border-primary text-primary'}
+                                      focus:outline-none`}
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">{sub.points}</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -698,7 +789,12 @@ const KNECPortal = ({ dangerMode, onAutoLogout }: KNECPortalProps) => {
                             <td className={`py-2 text-center ${dangerMode ? 'text-destructive' : 'text-primary'}`}>
                               {isEditing ? editedResult?.meanGrade : studentResult.meanGrade}
                             </td>
-                            <td className="py-2 text-center text-foreground">{studentResult.totalPoints}</td>
+                            <td className="py-2 text-center text-foreground">
+                              {isEditing 
+                                ? editedResult?.subjects.reduce((sum: number, s: any) => sum + (s.points || 0), 0)
+                                : studentResult.totalPoints
+                              }
+                            </td>
                           </tr>
                         </tfoot>
                       </table>
