@@ -89,10 +89,10 @@ const HomePage = ({ onStart, dangerMode }: HomePageProps) => {
               <h2 className={`text-2xl md:text-3xl font-bold ${
                 dangerMode ? 'text-destructive/70' : 'text-secondary text-glow-cyan'
               }`}>
-                SYSTEM v9.7
+                SECURE SOFTWARE v9.7
               </h2>
               <p className="text-muted-foreground text-sm mt-4 tracking-widest">
-                ADVANCED PENETRATION INTERFACE
+                CIA-GRADE INTELLIGENCE INTERFACE
               </p>
             </motion.div>
 
